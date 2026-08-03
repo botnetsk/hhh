@@ -8,56 +8,62 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.10'
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
 
-    - name: Clean buildozer cache
-      run: |
-        rm -rf .buildozer
-        rm -rf ~/.buildozer
-        rm -rf /home/runner/.buildozer
+      - name: Clean previous build cache
+        run: |
+          rm -rf ./.buildozer
+          rm -rf ~/.buildozer
+          rm -rf /home/runner/.buildozer
+          rm -rf ./.gradle
+          true
 
-    - name: Install Python dependencies
-      run: |
-        pip install --upgrade pip
-        pip install --upgrade Cython==0.29.37
-        pip install buildozer==1.5.0 pythonforandroid==2024.1.21
-        pip install kivy==2.2.1 pycryptodome requests
+      - name: Install Python build tools
+        run: |
+          pip install --upgrade pip
+          pip install buildozer==1.5.0 pythonforandroid==2024.1.21
+          # 不严格锁 Cython 0.29.37，让 p4a/host 环境自己处理；
+          # 如果本地 host 需要 Cython，可装较新兼容版，但一般不必
+          pip install --user Cython==3.0.2 || pip install Cython
 
-    - name: Install system dependencies
-      run: |
-        sudo apt update
-        sudo apt install -y \
-          openjdk-17-jdk \
-          autoconf \
-          libtool \
-          pkg-config \
-          zlib1g-dev \
-          libncurses5-dev \
-          libffi-dev \
-          libssl-dev \
-          unzip \
-          git \
-          cmake \
-          build-essential \
-          libgl1 \
-          libgles2-mesa-dev \
-          freeglut3-dev
+      - name: Install system dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y \
+            openjdk-17-jdk \
+            autoconf \
+            libtool \
+            pkg-config \
+            zlib1g-dev \
+            libncurses5-dev \
+            libffi-dev \
+            libssl-dev \
+            unzip \
+            git \
+            cmake \
+            build-essential \
+            libgl1 \
+            libgles2-mesa-dev \
+            freeglut3-dev \
+            ant
 
-    - name: Build APK
-      timeout-minutes: 45
-      run: |
-        buildozer -v android debug
+      - name: Build APK
+        timeout-minutes: 45
+        run: |
+          export PATH=$PATH:~/.local/bin
+          buildozer -v android debug
 
-    - name: Upload APK
-      if: success()
-      uses: actions/upload-artifact@v4
-      with:
-        name: wenxin-app-apk
-        path: bin/*.apk
+      - name: Upload APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wenxin-app-apk
+          path: bin/*.apk
+
 
