@@ -1,0 +1,62 @@
+name: Build APK
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install System Dependencies
+        run: |
+          sudo dpkg --add-architecture i386
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential ccache git libncurses5:i386 libstdc++6:i386 \
+            libz1:i386 zlib1g-dev openjdk-17-jdk unzip wget curl libffi-dev libssl-dev
+
+      - name: Install Buildozer & Cython
+        run: |
+          pip install --upgrade pip
+          pip install --user Cython==0.29.36 buildozer
+
+      - name: Setup Android SDK and Fix sdkmanager
+        run: |
+          ANDROID_SDK=~/.buildozer/android/platform/android-sdk
+          mkdir -p $ANDROID_SDK/cmdline-tools
+          cd $ANDROID_SDK/cmdline-tools
+          wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
+          unzip -q cmdline-tools.zip
+          mkdir -p latest
+          mv cmdline-tools/* latest/ 2>/dev/null || true
+          rm -f cmdline-tools.zip
+          
+          mkdir -p $ANDROID_SDK/tools
+          ln -sfn $ANDROID_SDK/cmdline-tools/latest/bin $ANDROID_SDK/tools/bin
+          ln -sfn $ANDROID_SDK/cmdline-tools/latest/lib $ANDROID_SDK/tools/lib
+
+          mkdir -p $ANDROID_SDK/licenses
+          echo "24333f8a5f36876af3653248d408efdae3fc7033" > $ANDROID_SDK/licenses/android-sdk-license
+          echo "d56f5187479451eabf01fb78af6dfcb131a648b0" >> $ANDROID_SDK/licenses/android-sdk-license
+          echo "84831b94096465910b232d6f4b1e5d3efad215b2" > $ANDROID_SDK/licenses/android-sdk-preview-license
+
+      - name: Build APK
+        run: |
+          export PATH=$PATH:~/.local/bin
+          yes | buildozer android debug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: package
+          path: bin/*.apk
