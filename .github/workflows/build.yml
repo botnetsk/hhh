@@ -30,12 +30,27 @@ jobs:
           pip install --upgrade pip
           pip install --user Cython==0.29.36 buildozer
 
-      - name: Pre-create Android SDK licenses
+      - name: Setup Android SDK and Fix sdkmanager
         run: |
-          mkdir -p ~/.buildozer/android/platform/android-sdk/licenses
-          echo "24333f8a5f36876af3653248d408efdae3fc7033" > ~/.buildozer/android/platform/android-sdk/licenses/android-sdk-license
-          echo "d56f5187479451eabf01fb78af6dfcb131a648b0" >> ~/.buildozer/android/platform/android-sdk/licenses/android-sdk-license
-          echo "84831b94096465910b232d6f4b1e5d3efad215b2" > ~/.buildozer/android/platform/android-sdk/licenses/android-sdk-preview-license
+          ANDROID_SDK=~/.buildozer/android/platform/android-sdk
+          mkdir -p $ANDROID_SDK/cmdline-tools
+          cd $ANDROID_SDK/cmdline-tools
+          wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
+          unzip -q cmdline-tools.zip
+          mkdir -p latest
+          mv cmdline-tools/* latest/ 2>/dev/null || true
+          rm -f cmdline-tools.zip
+          
+          # 创建软链接解决旧版路径寻找问题
+          mkdir -p $ANDROID_SDK/tools
+          ln -sfn $ANDROID_SDK/cmdline-tools/latest/bin $ANDROID_SDK/tools/bin
+          ln -sfn $ANDROID_SDK/cmdline-tools/latest/lib $ANDROID_SDK/tools/lib
+
+          # 写入许可证
+          mkdir -p $ANDROID_SDK/licenses
+          echo "24333f8a5f36876af3653248d408efdae3fc7033" > $ANDROID_SDK/licenses/android-sdk-license
+          echo "d56f5187479451eabf01fb78af6dfcb131a648b0" >> $ANDROID_SDK/licenses/android-sdk-license
+          echo "84831b94096465910b232d6f4b1e5d3efad215b2" > $ANDROID_SDK/licenses/android-sdk-preview-license
 
       - name: Build APK
         run: |
@@ -47,4 +62,5 @@ jobs:
         with:
           name: package
           path: bin/*.apk
+
 
