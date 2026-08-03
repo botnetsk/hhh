@@ -29,7 +29,6 @@ jobs:
       - name: Install Python build tools
         run: |
           pip install --upgrade "pip<26"
-          # 关键点：只安装 buildozer，让它自动拉取匹配的 python-for-android
           pip install buildozer==1.5.0
           pip install "Cython>=0.29.33,<3.1"
 
@@ -54,10 +53,35 @@ jobs:
             freeglut3-dev \
             ant
 
+      - name: Accept Android SDK licenses and install build-tools
+        run: |
+          export ANDROID_HOME=$HOME/.buildozer/android/platform/android-sdk
+          export ANDROID_SDK_ROOT=$ANDROID_HOME
+          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
+
+          # 如果 sdkmanager 不可用，让 buildozer/p4a 先准备 SDK 目录
+          mkdir -p $ANDROID_HOME
+
+          # 尝试接受许可证并安装 build-tools；不同环境下 sdkmanager 可能稍后由 p4a 下载
+          if command -v sdkmanager >/dev/null 2>&1; then
+            yes | sdkmanager --licenses || true
+            sdkmanager "build-tools;37.0.0" "platform-tools" || true
+          else
+            echo "sdkmanager not yet available, will rely on buildozer/p4a to fetch SDK tools"
+          fi
+
       - name: Build APK
         timeout-minutes: 45
         run: |
           export PATH=$PATH:~/.local/bin
+          export ANDROID_HOME=$HOME/.buildozer/android/platform/android-sdk
+          export ANDROID_SDK_ROOT=$ANDROID_HOME
+          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
+
+          # 强制接受许可证环境变量，部分 p4a/buildozer 会读取
+          export ACCEPT_SDK_LICENSE=true
+          export ANDROID_ACCEPT_LICENSES=true
+
           buildozer -v android debug
 
       - name: Upload APK
@@ -66,6 +90,7 @@ jobs:
         with:
           name: wenxin-app-apk
           path: bin/*.apk
+
 
 
 
