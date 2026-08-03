@@ -21,3 +21,4 @@ fullscreen = 0
 log_level = 2
 build_dir = .buildozer
 warn_on_root = True
+
